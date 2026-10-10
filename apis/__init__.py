@@ -1,7 +1,7 @@
 import asyncio
 import threading
 
-from fastapi import APIRouter, UploadFile, File, Form
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from pathlib import Path
 import sqlite3
 from pydantic import BaseModel
@@ -78,7 +78,11 @@ def _upsert_file(filename, hash, size, path, name_in_disk):
 ## Receives metadata and tells client what files it needs
 @router.post("/files")
 async def files(payload: list[FileRequest]):
+    from execution_context import cache_lock
+    async with cache_lock:
+        return await _files(payload)
 
+async def _files(payload: list[FileRequest]):
     needed_files: list[str] = []
 
     for file in payload:
@@ -101,7 +105,7 @@ async def files(payload: list[FileRequest]):
 
                 # check if path is inside base
                 if base not in path.parents and path != base:
-                    return {"error": "invalid stored path"}
+                    raise HTTPException(400, "invalid stored path")
 
                 await asyncio.to_thread(_delete_file_by_filename, file.dest_path)
 
@@ -126,8 +130,13 @@ async def upload(
     path: str = Form(...),
     dest_path: str = Form(...),
 ):
+    from execution_context import cache_lock
+    async with cache_lock:
+        return await _upload(file, hash, size, path, dest_path)
+
+async def _upload(file: UploadFile, hash: str, size: int, path: str, dest_path: str):
     if not file.filename:
-        return {"error": "missing filename"}
+        raise HTTPException(400, "missing filename")
 
     base = Path(environment["base"]).resolve()
 
@@ -136,11 +145,10 @@ async def upload(
 
     # security check
     if base not in dest_dir.parents and dest_dir != base:
-        return {"error": "invalid destination path"}
+        raise HTTPException(400, "invalid destination path")
 
-    # ensure it's treated as a directory, not a file path
-    if dest_dir.suffix:
-        dest_dir = dest_dir.parent
+    # dest_path is always a complete file key, including extensionless files.
+    dest_dir = dest_dir.parent
 
     dest_dir.mkdir(parents=True, exist_ok=True)
 
@@ -151,18 +159,25 @@ async def upload(
     chunk_size = 1024 * 1024
     written = 0
 
-    f = await asyncio.to_thread(open, dest, "wb")
+    f = await asyncio.to_thread(open, dest, "xb")
     try:
-        while chunk := await file.read(chunk_size):
-            await asyncio.to_thread(f.write, chunk)
-            written += len(chunk)
-
-            percent = (written / size) * 100 if size > 0 else 0
-            logger.debug("%s - %d/%d (%.1f%%)", file.filename, written, size, percent)
-    finally:
-        await asyncio.to_thread(f.close)
-
-    await asyncio.to_thread(_upsert_file, dest_path, hash, size, path, dest)
+        try:
+            while chunk := await file.read(chunk_size):
+                await asyncio.to_thread(f.write, chunk)
+                written += len(chunk)
+                if written > size:
+                    raise HTTPException(400, "upload exceeds declared size")
+                percent = (written / size) * 100 if size > 0 else 0
+                logger.debug("%s - %d/%d (%.1f%%)", file.filename, written, size, percent)
+        finally:
+            await asyncio.to_thread(f.close)
+        if written != size:
+            raise HTTPException(400, "incomplete upload")
+        # The cache key becomes visible only after a complete upload.
+        await asyncio.to_thread(_upsert_file, dest_path, hash, size, path, dest)
+    except BaseException:
+        dest.unlink(missing_ok=True)
+        raise
 
     logger.info("%s - completed", file.filename)
 

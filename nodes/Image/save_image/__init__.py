@@ -3,7 +3,8 @@ from uuid import uuid4
 
 from node import Node, NodeOutput, Output, get_connect_value_by_input_handle_name
 from state import GlobalState
-from fs import assets_folder, UploadFile, UploadFolder
+from fs import storage_folder, UploadFile, UploadFolder
+from execution_context import filename as safe_filename
 
 def save_image(node: dict, predecessors: list[tuple[dict, dict]], gs: GlobalState) -> NodeOutput:
     from PIL import Image
@@ -14,11 +15,11 @@ def save_image(node: dict, predecessors: list[tuple[dict, dict]], gs: GlobalStat
     if not filename:
         filename = node["data"]["filename"] or str(uuid4())
 
-    filename = str(filename.lstrip("/"))
+    filename = safe_filename(filename)
 
-    assets_path = assets_folder()
+    assets_path = storage_folder("output")
     
-    full_path = assets_path / "output" / f"{filename}_{time.time()}.jpg"
+    full_path = assets_path / f"{filename}_{time.time()}.jpg"
     
     print(f"Saving image to {full_path}")
 

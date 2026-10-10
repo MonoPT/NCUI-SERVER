@@ -2,7 +2,8 @@ from node import Node, NodeOutput, Output, get_connect_value_by_input_handle_nam
 import polars as pl
 
 from state import GlobalState
-from fs import assets_folder
+from fs import storage_folder, UploadFile, UploadFolder
+from execution_context import filename as safe_filename
 
 def func(node: dict, predecessors: list[tuple[dict, dict]], gs: GlobalState) -> NodeOutput:
     from PIL import Image
@@ -16,12 +17,18 @@ def func(node: dict, predecessors: list[tuple[dict, dict]], gs: GlobalState) -> 
     if not filename.endswith(".csv"):
         filename = f"{filename}.csv"
 
+    filename = safe_filename(filename)
+    uploads = []
     if input_df is not None:
-        output_dir = assets_folder() / "output"
+        output_dir = storage_folder("output")
         output_dir.mkdir(parents=True, exist_ok=True)
-        input_df.collect().write_csv(output_dir / filename)
+        path = output_dir / filename
+        if path.is_symlink():
+            raise ValueError("Symlink output")
+        input_df.collect().write_csv(path)
+        uploads.append(UploadFile(path=path, folder=UploadFolder.OUTPUT))
     
-    return NodeOutput(id=node["id"], outputs=[])
+    return NodeOutput(id=node["id"], outputs=[], files_to_upload=uploads)
 
 class SaveDFasCSV(Node):
     def __init__(self):

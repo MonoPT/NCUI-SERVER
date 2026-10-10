@@ -1,7 +1,7 @@
 from node import Node, NodeOutput, Output, get_connect_value_by_input_handle_name
 from state import GlobalState
 from pathlib import Path
-from fs import assets_folder, UploadFile, UploadFolder, resolve_path_to_main_machine
+from fs import storage_folder, UploadFile, UploadFolder, resolve_path_to_main_machine
 
 def main(node: dict, predecessors: list[tuple[dict, dict]], gs: GlobalState) -> NodeOutput:
     from PIL import Image
@@ -16,7 +16,7 @@ def main(node: dict, predecessors: list[tuple[dict, dict]], gs: GlobalState) -> 
     if input_image:
         filename = f"{uuid.uuid4()}".replace("-", "_")
 
-        temp_f = assets_folder().joinpath("temp")
+        temp_f = storage_folder("temp")
         
         save_path = Path(f"{temp_f}/{filename}.jpg")
         

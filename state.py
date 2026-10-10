@@ -12,8 +12,14 @@ class GlobalState:
     dataframes: dict[str, pl.LazyFrame]
 
     def __init__(self):
+        self.owner_states = {}
         self.models = {}
         self.dataframes = {}
+
+    def for_owner(self, owner):
+        if owner not in self.owner_states:
+            self.owner_states[owner] = GlobalState()
+        return self.owner_states[owner]
 
     def push_df(self, node_id: str, df: pl.LazyFrame):
         self.dataframes[node_id] = df

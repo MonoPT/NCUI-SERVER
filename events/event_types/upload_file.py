@@ -2,9 +2,9 @@ from .eventType import EventType
 
 class UploadFileMetadata(EventType):
     name = "UploadFileMetadata"
-    metadata: list[tuple[str, str]] # (filename, folder_key)
+    metadata: list[dict] # transfer_id, filename, folder, and exact size
     
-    def __init__(self, metadata: list[tuple[str, str]]):
+    def __init__(self, metadata: list[dict]):
         self.data = {
             "metadata": metadata
         }
