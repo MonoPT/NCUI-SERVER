@@ -2,8 +2,8 @@ import asyncio
 import json
 import unittest
 from unittest.mock import AsyncMock, patch
-from app import proccess_message
-from state import GlobalState
+from worker.server.dispatch import proccess_message
+from worker.execution.state import GlobalState
 
 
 class Socket:
@@ -20,18 +20,18 @@ def workflow_message(workflow_data=None, owner="owner"):
 
 class CompletionTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        lock = patch("execution_context.cache_lock", asyncio.Lock())
+        lock = patch("worker.execution.context.cache_lock", asyncio.Lock())
         lock.start()
         self.addCleanup(lock.stop)
     async def test_cache_preparation_cannot_mutate_inputs_during_execution(self):
-        import apis
+        import worker.server.files as apis
         started, finish_allowed = asyncio.Event(), asyncio.Event()
         async def running(*args):
             started.set()
             await finish_allowed.wait()
-        with patch("events.run_workflow.run_workflow", side_effect=running), \
-             patch("apis._files", new=AsyncMock(return_value=[])) as prepare, \
-             patch("apis._upload", new=AsyncMock(return_value={"status": "saved"})) as upload:
+        with patch("worker.events.run_workflow.run_workflow", side_effect=running), \
+             patch("worker.server.files._files", new=AsyncMock(return_value=[])) as prepare, \
+             patch("worker.server.files._upload", new=AsyncMock(return_value={"status": "saved"})) as upload:
             execution = asyncio.create_task(proccess_message(workflow_message(), Socket(), [], GlobalState()))
             await asyncio.wait_for(started.wait(), 1)
             preparation = asyncio.create_task(apis.files([]))
@@ -46,23 +46,23 @@ class CompletionTests(unittest.IsolatedAsyncioTestCase):
             prepare.assert_awaited_once()
             upload.assert_awaited_once()
     async def test_cancellation_is_terminal_error_and_releases_worker_lease(self):
-        import execution_context
+        import worker.execution.context as execution_context
         socket = Socket()
-        with patch("events.run_workflow.run_workflow", new=AsyncMock(side_effect=asyncio.CancelledError)):
+        with patch("worker.events.run_workflow.run_workflow", new=AsyncMock(side_effect=asyncio.CancelledError)):
             with self.assertRaises(asyncio.CancelledError):
                 await proccess_message(workflow_message(), socket, [], GlobalState())
         self.assertEqual(socket.events[-1]["name"], "WorkflowError")
         self.assertFalse(execution_context.cache_lock.locked())
     async def test_empty_workflow_has_exactly_one_terminal_acknowledgement(self):
         socket = Socket()
-        with patch("events.run_workflow.build_dag", return_value=[]):
+        with patch("worker.events.run_workflow.build_dag", return_value=[]):
             await proccess_message(workflow_message(), socket, [], GlobalState())
         self.assertEqual([e["name"] for e in socket.events], ["WorkflowStarted", "WorkflowFinished"])
         self.assertTrue(all(e["execution_id"] == "server-token" for e in socket.events))
     async def test_parse_owner_and_build_errors_are_terminal(self):
         for data, owner in [("{", "owner"), (None, "../other"), (None, "owner")]:
             socket = Socket()
-            with patch("events.run_workflow.build_dag", side_effect=ValueError("build failed")):
+            with patch("worker.events.run_workflow.build_dag", side_effect=ValueError("build failed")):
                 await proccess_message(workflow_message(data, owner), socket, [], GlobalState())
             terminal = [e for e in socket.events if e["name"] in ("WorkflowFinished", "WorkflowError")]
             self.assertEqual(len(terminal), 1)
@@ -75,7 +75,7 @@ class CompletionTests(unittest.IsolatedAsyncioTestCase):
             await ws.send_json({"name": "NodeExecutionError", "data": {"workflow_id": "workflow", "node_id": "node", "msg": "failure"}})
             node_error_sent.set()
             await finish_allowed.wait()
-        with patch("events.run_workflow.run_workflow", side_effect=running):
+        with patch("worker.events.run_workflow.run_workflow", side_effect=running):
             task = asyncio.create_task(proccess_message(workflow_message(), socket, [], GlobalState()))
             await asyncio.wait_for(node_error_sent.wait(), 1)
             self.assertEqual([e["name"] for e in socket.events], ["NodeExecutionError"])
@@ -89,7 +89,7 @@ class CompletionTests(unittest.IsolatedAsyncioTestCase):
         }})
         for error in [None, ValueError("bad dataframe")]:
             socket = Socket()
-            with patch("app.get_df_data", new=AsyncMock(side_effect=error)):
+            with patch("worker.server.dispatch.get_df_data", new=AsyncMock(side_effect=error)):
                 await proccess_message(message, socket, [], GlobalState())
             self.assertEqual(socket.events, [{"name": "ExecutionComplete", "data": {}, "execution_id": "dataframe-token"}])
 

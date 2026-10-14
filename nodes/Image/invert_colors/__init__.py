@@ -1,6 +1,6 @@
-from node import Node, NodeOutput, Output, get_connect_value_by_input_handle_name
+from worker.nodes.base import Node, NodeOutput, Output, get_connect_value_by_input_handle_name
 
-from state import GlobalState
+from worker.execution.state import GlobalState
 
 def invert_colors(node: dict, predecessors: list[tuple[dict, dict]], gs: GlobalState) -> NodeOutput:
     from PIL import Image, ImageOps

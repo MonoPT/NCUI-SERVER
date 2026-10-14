@@ -6,7 +6,7 @@ from pathlib import Path
 import sqlite3
 from pydantic import BaseModel
 
-from migrations.files import create_files_table, get_file_by_filename, upsert_file, delete_file_by_filename
+from worker.storage.migrations.files import create_files_table, get_file_by_filename, upsert_file, delete_file_by_filename
 
 router = APIRouter()
 
@@ -78,7 +78,7 @@ def _upsert_file(filename, hash, size, path, name_in_disk):
 ## Receives metadata and tells client what files it needs
 @router.post("/files")
 async def files(payload: list[FileRequest]):
-    from execution_context import cache_lock
+    from worker.execution.context import cache_lock
     async with cache_lock:
         return await _files(payload)
 
@@ -130,7 +130,7 @@ async def upload(
     path: str = Form(...),
     dest_path: str = Form(...),
 ):
-    from execution_context import cache_lock
+    from worker.execution.context import cache_lock
     async with cache_lock:
         return await _upload(file, hash, size, path, dest_path)
 

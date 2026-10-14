@@ -1,9 +1,9 @@
 from pprint import pprint
-from node import Node, NodeOutput, Output, get_connect_value_by_input_handle_name
+from worker.nodes.base import Node, NodeOutput, Output, get_connect_value_by_input_handle_name
 import polars as pl
 
 import polars as pl
-from state import GlobalState
+from worker.execution.state import GlobalState
 import uuid
 
 def func(node: dict, predecessors: list[tuple[dict, dict]], gs: GlobalState) -> NodeOutput:

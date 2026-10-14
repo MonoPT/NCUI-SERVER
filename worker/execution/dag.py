@@ -2,8 +2,7 @@ from pprint import pprint
 import networkx as nx
 import matplotlib.pyplot as plt
 
-from process_dag import proccess_dag
-from server import connect_to_server
+from worker.execution.process_dag import proccess_dag
 
 VISUALIZE_DAG = False # Debug dag visualization - saves image to dag_prev
 

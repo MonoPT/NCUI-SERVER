@@ -1,10 +1,10 @@
 import time
 from uuid import uuid4
 
-from node import Node, NodeOutput, Output, get_connect_value_by_input_handle_name
-from state import GlobalState
-from fs import storage_folder, UploadFile, UploadFolder
-from execution_context import filename as safe_filename
+from worker.nodes.base import Node, NodeOutput, Output, get_connect_value_by_input_handle_name
+from worker.execution.state import GlobalState
+from worker.storage.files import storage_folder, UploadFile, UploadFolder
+from worker.execution.context import filename as safe_filename
 
 def save_image(node: dict, predecessors: list[tuple[dict, dict]], gs: GlobalState) -> NodeOutput:
     from PIL import Image

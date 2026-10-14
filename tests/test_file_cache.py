@@ -1,7 +1,7 @@
 import hashlib
 import sqlite3
 import unittest
-from migrations.files import create_files_table, get_file_by_filename, upsert_file
+from worker.storage.migrations.files import create_files_table, get_file_by_filename, upsert_file
 
 
 class FileCacheTests(unittest.TestCase):

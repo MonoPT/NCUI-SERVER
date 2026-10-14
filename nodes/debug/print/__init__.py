@@ -1,7 +1,7 @@
-from node import Node, NodeOutput, Output, get_connect_value_by_input_handle_name
+from worker.nodes.base import Node, NodeOutput, Output, get_connect_value_by_input_handle_name
 from typing import Any
 
-from state import GlobalState
+from worker.execution.state import GlobalState
 
 def print_fn(node: dict, predecessors: list[tuple[dict, dict]], gs: GlobalState) -> NodeOutput:
     value: Any | None = get_connect_value_by_input_handle_name("any_input", predecessors)

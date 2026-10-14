@@ -1,11 +1,11 @@
 from pprint import pprint
-from state import GlobalState
+from worker.execution.state import GlobalState
 import websockets
 import json
 import math
 import polars as pl
 
-from events.event_types.df_data import DataframeUpdate
+from worker.events.event_types.df_data import DataframeUpdate
 from fastapi import WebSocket
 
 async def get_df_data(gs: GlobalState, ws: WebSocket, data: dict):

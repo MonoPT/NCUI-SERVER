@@ -6,10 +6,10 @@ import tempfile
 import unittest
 from unittest.mock import patch
 from fastapi import HTTPException, UploadFile
-import apis
-import fs
-from execution_context import owner_context
-from migrations.files import create_files_table, get_file_by_filename
+import worker.server.files as apis
+import worker.storage.files as fs
+from worker.execution.context import owner_context
+from worker.storage.migrations.files import create_files_table, get_file_by_filename
 
 
 class CacheUploadTests(unittest.IsolatedAsyncioTestCase):
@@ -18,9 +18,9 @@ class CacheUploadTests(unittest.IsolatedAsyncioTestCase):
         self.base = Path(self.temp.name)
         self.conn = sqlite3.connect(":memory:", check_same_thread=False)
         create_files_table(self.conn)
-        self.patches = [patch("execution_context.cache_lock", asyncio.Lock()),
+        self.patches = [patch("worker.execution.context.cache_lock", asyncio.Lock()),
                         patch.dict(apis.environment, {"base": self.base, "db": self.conn}),
-                        patch("apis.conn", self.conn)]
+                        patch("worker.server.files.conn", self.conn)]
         for item in self.patches: item.start()
     async def asyncTearDown(self):
         for item in reversed(self.patches): item.stop()

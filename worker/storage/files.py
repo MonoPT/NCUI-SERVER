@@ -1,14 +1,14 @@
 from pathlib import Path
-from execution_context import scoped_key, folder, owner_id
+from worker.execution.context import scoped_key, folder, owner_id
 
-from apis import environment
-from migrations.files import get_file_by_filename
+from worker.server.files import environment
+from worker.storage.migrations.files import get_file_by_filename
 
 from fastapi import WebSocket
 
-from node import UploadFile, UploadFolder
+from worker.nodes.base import UploadFile, UploadFolder
 
-from events.event_types.upload_file import UploadFileMetadata
+from worker.events.event_types.upload_file import UploadFileMetadata
 
 def load_asset(filename: str) -> Path | None:
     """Converts a path on the origin machine to the file on this container"""

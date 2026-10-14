@@ -1,10 +1,10 @@
 import json
-from message import Message
-from dag import build_dag, proccess_dag
-from events.event_types.started_workflow import WorkflowStarted
+from worker.messages import Message
+from worker.execution.dag import build_dag, proccess_dag
+from worker.events.event_types.started_workflow import WorkflowStarted
 
-from node import Node
-from state import GlobalState
+from worker.nodes.base import Node
+from worker.execution.state import GlobalState
 from fastapi import WebSocket
 
 async def run_workflow(message: Message, ws: WebSocket, node_list: list[Node], gs: GlobalState):

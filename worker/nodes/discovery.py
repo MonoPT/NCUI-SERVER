@@ -6,7 +6,7 @@ import inspect
 import importlib.util
 import pathlib
 
-from node import Node
+from worker.nodes.base import Node
 
 def load_all_packages(folder_path):
     """

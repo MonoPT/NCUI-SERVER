@@ -88,7 +88,7 @@ again when requested.
 Deploy the updated server and processor together; legacy filename-based binary
 packets and untagged result events/uploads are rejected.
 
-Focused tests: `uv run python -m unittest test_file_cache test_cache_uploads test_execution_completion test_execution_context test_workflow_storage -v`.
+Focused tests: `uv run python -m unittest discover -s tests -p 'test_*.py' -v`.
 
 ## Docker
 

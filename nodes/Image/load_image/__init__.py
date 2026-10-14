@@ -1,7 +1,7 @@
-from node import Node, NodeOutput, Output
+from worker.nodes.base import Node, NodeOutput, Output
 
-from state import GlobalState
-from fs import load_asset
+from worker.execution.state import GlobalState
+from worker.storage.files import load_asset
 
 from pathlib import Path
 

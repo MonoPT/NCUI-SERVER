@@ -1,11 +1,11 @@
 from pprint import pprint
-from node import Node, NodeOutput, Output, get_connect_value_by_input_handle_name
+from worker.nodes.base import Node, NodeOutput, Output, get_connect_value_by_input_handle_name
 
 from .utils import load_saft_as_xml, extract_header, extract_costumers, extract_products, extract_tax_table, extract_sales_invoices, extract_invoices, extract_work_document, extract_payments
 
-from state import GlobalState
+from worker.execution.state import GlobalState
 
-from fs import load_asset
+from worker.storage.files import load_asset
 
 def func(node: dict, predecessors: list[tuple[dict, dict]], gs: GlobalState) -> NodeOutput:
     

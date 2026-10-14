@@ -1,19 +1,19 @@
 from pprint import pprint
 import networkx as nx
 
-from events.event_types.node_execution_error import NodeExecutionError
-from events.event_types.node_start import NodeExecutionStart
-from events.event_types.node_finish import NodeExecutionFinish
-from events.event_types.node_skipped import NodeSkipped
+from worker.events.event_types.node_execution_error import NodeExecutionError
+from worker.events.event_types.node_start import NodeExecutionStart
+from worker.events.event_types.node_finish import NodeExecutionFinish
+from worker.events.event_types.node_skipped import NodeSkipped
 
 
-from node import NodeOutput, Node
+from worker.nodes.base import NodeOutput, Node
 
-from state import GlobalState
+from worker.execution.state import GlobalState
 
 from fastapi import WebSocket
 
-from fs import send_image_to_client
+from worker.storage.files import send_image_to_client
     
 async def proccess_dag(G: nx.DiGraph, data: dict, ws: None | WebSocket, workflow_id: str, node_list: list[Node], gs: GlobalState):
     import json

@@ -1,16 +1,21 @@
 import asyncio
 import json
-from node import Node
-from message import Message
-from events.event_types.container_specs import ContainerSpecs
-from state import GlobalState
-from dataframes import get_df_data
+from worker.nodes.base import Node
+from worker.messages import Message
+from worker.events.event_types.container_specs import ContainerSpecs
+from worker.execution.state import GlobalState
+from worker.dataframes import get_df_data
 from fastapi import WebSocket
 
 
 async def _run_owned_workflow(message, ws, node_list, gs):
-    from events.run_workflow import run_workflow
-    from execution_context import owner_context, execution_context, owner_id, ExecutionSocket
+    from worker.events.run_workflow import run_workflow
+    from worker.execution.context import (
+        ExecutionSocket,
+        execution_context,
+        owner_context,
+        owner_id,
+    )
 
     scoped_ws = ExecutionSocket(ws, message.data["execution_id"])
     owner_token = owner_context.set(message.data.get("owner_id", ""))
@@ -40,7 +45,7 @@ async def _run_owned_workflow(message, ws, node_list, gs):
 
 
 async def proccess_message(msg: str, ws: WebSocket, node_list: list[Node], gs: GlobalState):
-    from execution_context import cache_lock, ExecutionSocket
+    from worker.execution.context import ExecutionSocket, cache_lock
 
     data = json.loads(msg)
     message = Message(name=data["name"], data=data["data"])

@@ -2,7 +2,7 @@ import asyncio
 from pathlib import Path
 import tempfile
 import unittest
-from execution_context import owner_context, owner_id, scoped_key, folder, filename, ExecutionSocket
+from worker.execution.context import owner_context, owner_id, scoped_key, folder, filename, ExecutionSocket
 
 class StorageContextTests(unittest.TestCase):
     def setUp(self):

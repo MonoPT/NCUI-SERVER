@@ -1,6 +1,6 @@
 from typing import Any
-from node import Node, NodeOutput, Output, get_connect_value_by_input_handle_name
-from state import GlobalState
+from worker.nodes.base import Node, NodeOutput, Output, get_connect_value_by_input_handle_name
+from worker.execution.state import GlobalState
 
 def func(node: dict, predecessors: list[tuple[dict, dict]], gs: GlobalState) -> NodeOutput:
     

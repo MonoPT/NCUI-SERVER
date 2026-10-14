@@ -5,10 +5,10 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-import fs
-from execution_context import owner_context
-from node import UploadFile, UploadFolder
-from state import GlobalState
+import worker.storage.files as fs
+from worker.execution.context import owner_context
+from worker.nodes.base import UploadFile, UploadFolder
+from worker.execution.state import GlobalState
 
 class WorkflowStorageTests(unittest.TestCase):
     def setUp(self):

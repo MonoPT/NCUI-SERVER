@@ -1,7 +1,7 @@
 from typing import Any
 from typing import TypeVar
 from collections.abc import Callable
-from state import GlobalState
+from worker.execution.state import GlobalState
 
 from pathlib import Path
 from enum import Enum

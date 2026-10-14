@@ -1,16 +1,16 @@
 import uvicorn
 from fastapi import FastAPI, WebSocket
 
-from node import Node
-from load_nodes import load_nodes
+from worker.nodes.base import Node
+from worker.nodes.discovery import load_nodes
 
-from app import proccess_message
-from state import GlobalState
+from worker.server.dispatch import proccess_message
+from worker.execution.state import GlobalState
 
-from events.event_types.container_specs import ContainerSpecs
+from worker.events.event_types.container_specs import ContainerSpecs
 
 # Import Routes
-from apis import router as filesRouter
+from worker.server.files import router as filesRouter
 
 
 # States

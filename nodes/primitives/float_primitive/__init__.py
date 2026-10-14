@@ -1,6 +1,6 @@
-from node import Node, NodeOutput, Output
+from worker.nodes.base import Node, NodeOutput, Output
 
-from state import GlobalState
+from worker.execution.state import GlobalState
 
 def func(node: dict, predecessors: list[tuple[dict, dict]], gs: GlobalState) -> NodeOutput:
     

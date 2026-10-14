@@ -1,6 +1,6 @@
 import asyncio
 
-from server import connect_to_server
+from worker.server.server import connect_to_server
 
 def main():    
     asyncio.run(connect_to_server())

@@ -1,7 +1,7 @@
-from node import Node, NodeOutput, Output, get_connect_value_by_input_handle_name
-from state import GlobalState
+from worker.nodes.base import Node, NodeOutput, Output, get_connect_value_by_input_handle_name
+from worker.execution.state import GlobalState
 from pathlib import Path
-from fs import storage_folder, UploadFile, UploadFolder, resolve_path_to_main_machine
+from worker.storage.files import storage_folder, UploadFile, UploadFolder, resolve_path_to_main_machine
 
 def main(node: dict, predecessors: list[tuple[dict, dict]], gs: GlobalState) -> NodeOutput:
     from PIL import Image
