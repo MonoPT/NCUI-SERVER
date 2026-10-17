@@ -31,9 +31,8 @@ async def ws_endpoint(websocket: WebSocket):
 
     terminal_manager = TerminalManager(websocket.send_json)
 
-    await websocket.send_json(
-        ContainerSpecs().to_dict()
-    )
+    container_specs = await asyncio.to_thread(ContainerSpecs)
+    await websocket.send_json(container_specs.to_dict())
 
     try:
         while True:

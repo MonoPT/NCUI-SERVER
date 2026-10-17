@@ -16,7 +16,7 @@ class ContainerSpecs(EventType):
 
         
         # 1. CPU - Get usage and core count
-        specs['cpu_usage_pct'] = psutil.cpu_percent(interval=1)
+        specs['cpu_usage_pct'] = psutil.cpu_percent(interval=None)
         #pyrefly:ignore
         specs['cpu_cores'] = psutil.cpu_count(logical=True)
 

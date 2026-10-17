@@ -76,7 +76,8 @@ async def proccess_message(
         return
 
     if message.name == "ping_machine_perf":
-        await ws.send_json(ContainerSpecs().to_dict())
+        container_specs = await asyncio.to_thread(ContainerSpecs)
+        await ws.send_json(container_specs.to_dict())
         return
 
     if message.name == "dataframe_get_data":
