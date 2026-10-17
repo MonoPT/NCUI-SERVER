@@ -12,7 +12,7 @@ class ContainerSpecs(EventType):
         self.data = self.get_system_specs()
         
     def get_system_specs(self):
-        specs = {}
+        specs: dict[str, object] = {}
 
         
         # 1. CPU - Get usage and core count
@@ -36,6 +36,9 @@ class ContainerSpecs(EventType):
         # 4. Get GPUS. Works on Nvidia and Intel (integrated). Other platforms needs testing.
         #pyrefly:ignore
         specs["gpus"] = get_all_gpus()
+        specs["capabilities"] = {
+            "terminal": True,
+        }
         
         return specs
 

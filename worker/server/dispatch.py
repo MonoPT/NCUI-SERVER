@@ -5,6 +5,11 @@ from worker.messages import Message
 from worker.events.event_types.container_specs import ContainerSpecs
 from worker.execution.state import GlobalState
 from worker.dataframes import get_df_data
+from worker.terminal.manager import (
+    TerminalManager,
+    TerminalMessageError,
+    session_id_from_message,
+)
 from fastapi import WebSocket
 
 
@@ -44,11 +49,27 @@ async def _run_owned_workflow(message, ws, node_list, gs):
             owner_context.reset(owner_token)
 
 
-async def proccess_message(msg: str, ws: WebSocket, node_list: list[Node], gs: GlobalState):
+async def proccess_message(
+    msg: str,
+    ws: WebSocket,
+    node_list: list[Node],
+    gs: GlobalState,
+    terminal_manager: TerminalManager | None = None,
+):
     from worker.execution.context import ExecutionSocket, cache_lock
 
     data = json.loads(msg)
     message = Message(name=data["name"], data=data["data"])
+
+    if message.name in {
+        "terminal_open",
+        "terminal_input",
+        "terminal_resize",
+        "terminal_close",
+    }:
+        await _process_terminal_message(message, ws, terminal_manager)
+        return
+
     if message.name == "run_workflow":
         async with cache_lock:
             await _run_owned_workflow(message, ws, node_list, gs)
@@ -72,3 +93,43 @@ async def proccess_message(msg: str, ws: WebSocket, node_list: list[Node], gs: G
 
     print(f"Action for {message.name} not implemented")
     await ws.send_text(f"Action {message.name} not implemented")
+
+
+async def _process_terminal_message(
+    message: Message,
+    websocket: WebSocket,
+    terminal_manager: TerminalManager | None,
+) -> None:
+    try:
+        session_id = session_id_from_message(message.data)
+    except TerminalMessageError:
+        return
+
+    if terminal_manager is None:
+        await websocket.send_json(
+            {
+                "name": "terminal_error",
+                "data": {
+                    "session_id": session_id,
+                    "message": "Terminal support is unavailable",
+                },
+            }
+        )
+        return
+
+    try:
+        if message.name == "terminal_open":
+            await terminal_manager.open(message.data)
+            return
+
+        if message.name == "terminal_input":
+            await terminal_manager.input(message.data)
+            return
+
+        if message.name == "terminal_resize":
+            await terminal_manager.resize(message.data)
+            return
+
+        await terminal_manager.close(session_id)
+    except TerminalMessageError as error:
+        await terminal_manager.error(session_id, str(error))

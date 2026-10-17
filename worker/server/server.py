@@ -1,10 +1,11 @@
 import uvicorn
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
 from worker.nodes.base import Node
 from worker.nodes.discovery import load_nodes
 
 from worker.server.dispatch import proccess_message
+from worker.terminal import TerminalManager
 from worker.execution.state import GlobalState
 
 from worker.events.event_types.container_specs import ContainerSpecs
@@ -28,19 +29,27 @@ async def health():
 async def ws_endpoint(websocket: WebSocket):
     await websocket.accept()
 
+    terminal_manager = TerminalManager(websocket.send_json)
+
     await websocket.send_json(
         ContainerSpecs().to_dict()
     )
 
-    while True:
-        message = await websocket.receive_text()
+    try:
+        while True:
+            message = await websocket.receive_text()
 
-        await proccess_message(
-            message,
-            websocket,
-            node_list,
-            global_state
-        )
+            await proccess_message(
+                message,
+                websocket,
+                node_list,
+                global_state,
+                terminal_manager,
+            )
+    except WebSocketDisconnect:
+        pass
+    finally:
+        await terminal_manager.close_all()
 
 # Register extra routes
 app.include_router(filesRouter)
