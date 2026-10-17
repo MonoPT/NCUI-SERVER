@@ -5,6 +5,7 @@ import base64
 import binascii
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from functools import partial
 import fcntl
 import os
 import pty
@@ -120,6 +121,13 @@ def input_from_message(data: dict[str, Any]) -> bytes:
     return input_bytes
 
 
+def configure_controlling_terminal(slave_fd: int) -> None:
+    """Give a spawned shell its own session and controlling PTY on Linux."""
+
+    os.setsid()
+    fcntl.ioctl(slave_fd, termios.TIOCSCTTY, 0)
+
+
 class TerminalManager:
     """Create, route, and clean up PTY sessions for one worker WebSocket."""
 
@@ -151,7 +159,7 @@ class TerminalManager:
                 stdout=slave_fd,
                 stderr=slave_fd,
                 close_fds=True,
-                preexec_fn=os.setsid,
+                preexec_fn=partial(configure_controlling_terminal, slave_fd),
             )
         except (OSError, subprocess.SubprocessError):
             if master_fd is not None:

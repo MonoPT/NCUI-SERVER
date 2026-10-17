@@ -8,27 +8,59 @@ import subprocess
 import sys
 
 
-def install_fish() -> None:
-    """Install Fish when setup runs with the worker image's root privileges."""
+def install_system_packages(
+    packages: list[str],
+    required_commands: list[str],
+) -> None:
+    """Install missing command dependencies with a supported system package manager."""
 
-    if shutil.which("fish") is not None:
+    missing_commands = [
+        command
+        for command in required_commands
+        if shutil.which(command) is None
+    ]
+    if not missing_commands:
         return
 
     if os.name != "posix" or os.geteuid() != 0:
+        commands = ", ".join(missing_commands)
         raise RuntimeError(
-            "Fish is required for terminal sessions. Install Fish, then rerun python setup.py."
+            f"Missing required commands: {commands}. Install them, then rerun python setup.py."
         )
 
     apt_get = shutil.which("apt-get")
-    if apt_get is None:
-        raise RuntimeError(
-            "Fish is required for terminal sessions, but setup can only install it automatically with apt-get."
-        )
+    pacman = shutil.which("pacman")
 
-    subprocess.run([apt_get, "update"], check=True)
-    subprocess.run(
-        [apt_get, "install", "--yes", "--no-install-recommends", "fish"],
-        check=True,
+    if apt_get is not None:
+        subprocess.run([apt_get, "update"], check=True)
+        subprocess.run(
+            [apt_get, "install", "--yes", "--no-install-recommends", *packages],
+            check=True,
+        )
+        return
+
+    if pacman is not None:
+        subprocess.run([pacman, "--sync", "--refresh", "--noconfirm"], check=True)
+        subprocess.run(
+            [pacman, "--sync", "--needed", "--noconfirm", *packages],
+            check=True,
+        )
+        return
+
+    managers = "apt-get or pacman"
+    package_list = ", ".join(packages)
+    raise RuntimeError(
+        f"Missing required commands: {', '.join(missing_commands)}. "
+        f"Install packages ({package_list}) with {managers}, then rerun python setup.py."
+    )
+
+
+def install_fish() -> None:
+    """Ensure Fish is available for terminal sessions."""
+
+    install_system_packages(
+        packages=["fish"],
+        required_commands=["fish"],
     )
 
 
