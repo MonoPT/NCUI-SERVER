@@ -1,3 +1,5 @@
+import asyncio
+
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
@@ -45,8 +47,16 @@ async def ws_endpoint(websocket: WebSocket):
                 global_state,
                 terminal_manager,
             )
-    except WebSocketDisconnect:
-        pass
+    except WebSocketDisconnect as error:
+        print(
+            f"Server WebSocket disconnected with code {error.code}.",
+            flush=True,
+        )
+    except Exception:
+        import traceback
+
+        traceback.print_exc()
+        raise
     finally:
         await terminal_manager.close_all()
 
