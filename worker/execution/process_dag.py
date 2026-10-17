@@ -1,10 +1,14 @@
+import contextlib
+import io
 from pprint import pprint
+
 import networkx as nx
 
 from worker.events.event_types.node_execution_error import NodeExecutionError
 from worker.events.event_types.node_start import NodeExecutionStart
 from worker.events.event_types.node_finish import NodeExecutionFinish
 from worker.events.event_types.node_skipped import NodeSkipped
+from worker.events.event_types.workflow_log import WorkflowLog
 
 
 from worker.nodes.base import NodeOutput, Node
@@ -14,7 +18,41 @@ from worker.execution.state import GlobalState
 from fastapi import WebSocket
 
 from worker.storage.files import send_image_to_client
-    
+
+
+MAX_LOG_CHUNK_BYTES = 16 * 1024
+
+
+async def send_python_output(
+    websocket: WebSocket | None,
+    workflow_id: str,
+    node_id: str,
+    stdout: io.StringIO,
+    stderr: io.StringIO,
+) -> None:
+    """Relay bounded node stdout/stderr through the execution-scoped socket."""
+
+    if websocket is None:
+        return
+
+    for stream, captured in (("stdout", stdout), ("stderr", stderr)):
+        text = captured.getvalue()
+        if not text:
+            continue
+
+        encoded = text.encode("utf-8", errors="replace")
+        for start in range(0, len(encoded), MAX_LOG_CHUNK_BYTES):
+            chunk = encoded[start : start + MAX_LOG_CHUNK_BYTES]
+            await websocket.send_json(
+                WorkflowLog(
+                    workflow_id=workflow_id,
+                    node_id=node_id,
+                    stream=stream,
+                    text=chunk.decode("utf-8", errors="replace"),
+                ).to_dict()
+            )
+
+
 async def proccess_dag(G: nx.DiGraph, data: dict, ws: None | WebSocket, workflow_id: str, node_list: list[Node], gs: GlobalState):
     import json
     results = {}
@@ -44,20 +82,48 @@ async def proccess_dag(G: nx.DiGraph, data: dict, ws: None | WebSocket, workflow
              
         return_data = None ## Data to be sent to client on finish
              
-        try:       
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        try:
             if ws: ## Notify user when node starts
                 await ws.send_json(
                     NodeExecutionStart(workflow_id=workflow_id, node_id=item["id"]).to_dict()
-                ) 
-            res = run_node(item, predecessors, node_list, gs)
-        except Exception as  e:
+                )
+
+            with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                res = run_node(item, predecessors, node_list, gs)
+        except Exception as error:
+            print(
+                f"An error occurred: {error}. Workflow interrupted",
+                file=stderr,
+            )
+            await send_python_output(
+                ws,
+                workflow_id,
+                item["id"],
+                stdout,
+                stderr,
+            )
+
             if ws:
                 await ws.send_json(
-                    NodeExecutionError(workflow_id=workflow_id, node_id=item["id"], msg=f"{e}").to_dict()
-                ) 
-            print(f"An error ocurred: {e}. Workflow interrupted")
-            
+                    NodeExecutionError(
+                        workflow_id=workflow_id,
+                        node_id=item["id"],
+                        msg=f"{error}",
+                    ).to_dict()
+                )
+
             return
+
+        await send_python_output(
+            ws,
+            workflow_id,
+            item["id"],
+            stdout,
+            stderr,
+        )
         
         if res:
             #pyrefly:ignore
