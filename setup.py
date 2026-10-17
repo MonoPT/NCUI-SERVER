@@ -8,6 +8,30 @@ import subprocess
 import sys
 
 
+def install_fish() -> None:
+    """Install Fish when setup runs with the worker image's root privileges."""
+
+    if shutil.which("fish") is not None:
+        return
+
+    if os.name != "posix" or os.geteuid() != 0:
+        raise RuntimeError(
+            "Fish is required for terminal sessions. Install Fish, then rerun python setup.py."
+        )
+
+    apt_get = shutil.which("apt-get")
+    if apt_get is None:
+        raise RuntimeError(
+            "Fish is required for terminal sessions, but setup can only install it automatically with apt-get."
+        )
+
+    subprocess.run([apt_get, "update"], check=True)
+    subprocess.run(
+        [apt_get, "install", "--yes", "--no-install-recommends", "fish"],
+        check=True,
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run", action="store_true", help="start the processor after setup")
@@ -29,6 +53,7 @@ def main() -> int:
         return 1
 
     try:
+        install_fish()
         subprocess.run([uv, "sync", "--locked"], cwd=repo, check=True)
 
         preferred = Path("/data")
