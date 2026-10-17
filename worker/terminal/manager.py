@@ -159,6 +159,10 @@ class TerminalManager:
                 stdout=slave_fd,
                 stderr=slave_fd,
                 close_fds=True,
+                env={
+                    **os.environ,
+                    "TERM": "xterm-256color",
+                },
                 preexec_fn=partial(configure_controlling_terminal, slave_fd),
             )
         except (OSError, subprocess.SubprocessError):
@@ -256,15 +260,30 @@ class TerminalManager:
             )
 
     async def _forward_output(self, session_id: str, master_fd: int) -> None:
-        try:
-            while True:
-                output_bytes = await asyncio.to_thread(
-                    os.read,
-                    master_fd,
-                    MAX_OUTPUT_BYTES,
-                )
+        """Forward PTY output without reserving a worker-thread-pool thread."""
 
-                if not output_bytes:
+        event_loop = asyncio.get_running_loop()
+        output_queue: asyncio.Queue[bytes | None] = asyncio.Queue()
+
+        def read_available_output() -> None:
+            try:
+                output_bytes = os.read(master_fd, MAX_OUTPUT_BYTES)
+            except BlockingIOError:
+                return
+            except OSError:
+                output_queue.put_nowait(None)
+                return
+
+            output_queue.put_nowait(output_bytes or None)
+
+        try:
+            flags = fcntl.fcntl(master_fd, fcntl.F_GETFL)
+            fcntl.fcntl(master_fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+            event_loop.add_reader(master_fd, read_available_output)
+
+            while True:
+                output_bytes = await output_queue.get()
+                if output_bytes is None:
                     return
 
                 session = self._sessions.get(session_id)
@@ -280,6 +299,8 @@ class TerminalManager:
                 )
         except (OSError, RuntimeError, asyncio.CancelledError):
             return
+        finally:
+            event_loop.remove_reader(master_fd)
 
     async def _wait_for_exit(
         self,
