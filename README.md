@@ -3,6 +3,11 @@
 Standalone Python workflow processor serving HTTP and WebSocket endpoints on port
 3050. It can run without the parent node editor repository.
 
+## License
+
+This project is source-available under the [SaaS Commercial Restriction License 1.0](LICENSE). See
+[LICENSING.md](LICENSING.md) for the generated-output and hosted-service policy.
+
 ## Prerequisites
 
 - Python 3.14, available as `python` (or use `python3.14` in the commands below).
