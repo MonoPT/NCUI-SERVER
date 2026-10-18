@@ -9,6 +9,7 @@ from worker.nodes.discovery import load_nodes
 from worker.server.dispatch import proccess_message
 from worker.terminal import TerminalManager
 from worker.execution.state import GlobalState
+from worker.machine_logs import machine_log_manager
 
 from worker.events.event_types.container_specs import ContainerSpecs
 
@@ -31,10 +32,19 @@ async def health():
 async def ws_endpoint(websocket: WebSocket):
     await websocket.accept()
 
-    terminal_manager = TerminalManager(websocket.send_json)
+    socket_send_lock = asyncio.Lock()
+
+    async def send_worker_event(event: dict) -> None:
+        async with socket_send_lock:
+            await websocket.send_json(event)
+
+    terminal_manager = TerminalManager(send_worker_event)
+    machine_log_manager.attach(send_worker_event)
+    machine_log_manager.announce_worker_started()
+    machine_log_manager.record_lifecycle("server_connection_opened")
 
     container_specs = await asyncio.to_thread(ContainerSpecs)
-    await websocket.send_json(container_specs.to_dict())
+    await send_worker_event(container_specs.to_dict())
 
     try:
         while True:
@@ -48,6 +58,7 @@ async def ws_endpoint(websocket: WebSocket):
                 terminal_manager,
             )
     except WebSocketDisconnect as error:
+        machine_log_manager.detach()
         print(
             f"Server WebSocket disconnected with code {error.code}.",
             flush=True,
@@ -58,6 +69,7 @@ async def ws_endpoint(websocket: WebSocket):
         traceback.print_exc()
         raise
     finally:
+        machine_log_manager.detach()
         await terminal_manager.close_all()
 
 # Register extra routes
@@ -65,6 +77,8 @@ app.include_router(filesRouter)
 
 # Entrypoint
 async def connect_to_server():
+    machine_log_manager.install_process_stream_capture()
+
     try:
         config = uvicorn.Config(
             app,

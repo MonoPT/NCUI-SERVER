@@ -38,6 +38,7 @@ class ContainerSpecs(EventType):
         specs["gpus"] = get_all_gpus()
         specs["capabilities"] = {
             "terminal": True,
+            "machine_logs": True,
         }
         
         return specs
